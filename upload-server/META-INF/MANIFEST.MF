@@ -1,0 +1,9 @@
+Manifest-Version: 1.0
+Start-Class: com.mls.upload.server.UploadServerApplication
+Spring-Boot-Classes: BOOT-INF/classes/
+Spring-Boot-Lib: BOOT-INF/lib/
+Build-Jdk-Spec: 1.8
+Spring-Boot-Version: 2.1.18.RELEASE
+Created-By: Maven JAR Plugin 3.4.1
+Main-Class: org.springframework.boot.loader.JarLauncher
+

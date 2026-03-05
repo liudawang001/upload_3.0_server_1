@@ -1,0 +1,277 @@
+# 木林森图片上传服务端配置文件
+# Spring Boot 2.1.18.RELEASE
+# 配置文件版本: 1.0.0
+
+# ==================== 服务器配置 ====================
+server:
+  port: 8081
+  servlet:
+    context-path: /api
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+  tomcat:
+    uri-encoding: UTF-8
+    max-threads: 200
+    min-spare-threads: 10
+
+# ==================== Spring配置 ====================
+spring:
+  application:
+    name: upload-server
+  
+  # 数据源配置
+  datasource:
+    url: jdbc:mysql://192.168.0.79:3306/test_02?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: mls01
+    password: 12345@Mls
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    
+    # HikariCP连接池配置
+    hikari:
+      pool-name: HikariCP-Upload
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      leak-detection-threshold: 60000
+      
+  # 文件上传配置
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 50MB
+      max-request-size: 500MB
+      file-size-threshold: 2KB
+      location: ${java.io.tmpdir}
+      
+  # Jackson JSON配置
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+      fail-on-empty-beans: false
+    deserialization:
+      fail-on-unknown-properties: false
+
+# ==================== MyBatis配置 ====================
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.mls.upload.server.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    cache-enabled: true
+    lazy-loading-enabled: true
+    multiple-result-sets-enabled: true
+    use-column-label: true
+    use-generated-keys: true
+    auto-mapping-behavior: partial
+    auto-mapping-unknown-column-behavior: warning
+    default-executor-type: reuse
+    default-statement-timeout: 25
+    default-fetch-size: 100
+    safe-row-bounds-enabled: false
+    local-cache-scope: session
+    jdbc-type-for-null: other
+    lazy-load-trigger-methods: equals,clone,hashCode,toString
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+
+# ==================== 自定义应用配置 ====================
+app:
+  # 文件存储配置
+  file:
+    upload:
+      # 花型图存储路径
+      flower-path: D:\MLS_Pic\mls_image_use
+      # 配色图存储路径
+      color-path: D:\MLS_Pic\mls_image_use\color_scheme
+      # 临时文件路径
+      temp-path: ${java.io.tmpdir}/upload-temp
+      # 允许的文件类型
+      allowed-types: jpg,jpeg,png,bmp,gif
+      # 单个文件最大大小（MB）
+      max-file-size: 50
+      
+  # 特征提取Docker服务配置
+  feature:
+    extraction:
+      docker:
+        # 是否启用特征提取功能（开发环境默认禁用）
+        enabled: true
+        # Docker服务URL（根据Docker特征提取方法参考.md）
+        url: http://192.168.0.79:5000/api/add_pic
+        # 请求超时时间（毫秒）
+        timeout: 60000
+        # 连接超时时间（毫秒）
+        connect-timeout: 30000
+        # 读取超时时间（毫秒）
+        read-timeout: 60000
+        # 重试次数
+        retry-times: 3
+        # 重试间隔时间（毫秒）
+        retry-interval: 1000
+        # 健康检查URL
+        health-check-url: http://192.168.0.79:5000/health
+        # 是否启用健康检查（Docker服务没有/health端点，暂时禁用）
+        health-check-enabled: false
+
+        # 覆盖策略配置
+        # 是否覆盖已存在的特征向量
+        # true: 重新上传相同文件时会重新提取特征并覆盖旧记录
+        # false: 跳过已存在特征向量的文件（默认行为，保持向后兼容）
+        overwrite-existing: true
+        
+  # 安全配置
+  security:
+    # JWT配置
+    jwt:
+      secret: mls-upload-system-jwt-secret-key-2024
+      expiration: 86400000  # 24小时
+      header: Authorization
+      prefix: Bearer
+      
+    # 密码加密配置
+    password:
+      encoder: bcrypt
+      strength: 10
+      
+  # 业务配置
+  business:
+    # 批量上传配置
+    batch:
+      max-size: 1000  # 单次最大上传数量
+      thread-pool-size: 10  # 处理线程池大小
+      
+    # 数据验证配置
+    validation:
+      excel-max-rows: 10000  # Excel最大行数
+      filename-pattern: "^[a-zA-Z0-9_\\-\\.\\u4e00-\\u9fa5]+$"  # 文件名格式
+
+# ==================== 日志配置 ====================
+logging:
+  level:
+    root: INFO
+    com.mls.upload.server: DEBUG
+    org.springframework.web: INFO
+    org.springframework.security: INFO
+    org.mybatis: DEBUG
+    com.zaxxer.hikari: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"
+  file:
+    name: logs/upload-server.log
+    max-size: 10MB
+    max-history: 30
+
+# ==================== 管理端点配置 ====================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+  info:
+    git:
+      mode: full
+
+# ==================== 缓存刷新配置 ====================
+cache:
+  refresh:
+    # 缓存刷新功能开关
+    enabled: true
+    # 项目B的服务地址
+    target-url: "http://192.168.0.79:8080"
+    # 超时配置
+    timeout:
+      # 连接超时（毫秒）
+      connect: 5000
+      # 读取超时（毫秒）
+      read: 10000
+    # 重试配置
+    retry:
+      # 最大重试次数
+      max-attempts: 3
+      # 初始延迟（毫秒）
+      initial-delay: 1000
+    # 线程池配置
+    thread-pool:
+      # 核心线程数
+      core-size: 2
+      # 最大线程数
+      max-size: 5
+      # 队列容量
+      queue-capacity: 100
+    # 批量处理配置
+    batch:
+      # 批量处理阈值（超过此数量使用批量API）
+      threshold: 5
+      # 批量收集超时时间（毫秒）
+      collect-timeout: 2000
+      # 最大等待队列清空时间（毫秒）
+      max-wait-timeout: 30000
+
+      # 大批量处理配置
+      # 大批量处理阈值（超过此数量使用大批量API）
+      large-batch-threshold: 500
+      # 超大批量处理阈值（超过此数量使用异步API）
+      mega-batch-threshold: 2000
+      # 最大批处理大小
+      max-batch-size: 5000
+      # 默认批处理大小
+      default-batch-size: 500
+      # 最优批处理大小
+      optimal-batch-size: 1000
+
+      # 并发处理配置
+      # 最大并发批次数
+      max-concurrent-batches: 3
+      # 是否启用并行处理
+      enable-parallel-processing: true
+
+      # 性能监控配置
+      # 内存使用阈值（MB）
+      memory-threshold-mb: 512
+      # 是否启用内存监控
+      enable-memory-monitoring: true
+
+      # 超时控制配置
+      # 单个批次超时时间（秒）
+      batch-timeout-seconds: 600
+      # 总处理超时时间（秒）
+      total-timeout-seconds: 3600
+
+      # 错误处理配置
+      # 是否允许部分成功
+      enable-partial-success: true
+
+      # 进度跟踪配置
+      # 是否启用进度跟踪
+      enable-progress-tracking: true
+      # 进度报告间隔（处理条数）
+      progress-report-interval: 100
+
+      # 降级和分批处理配置
+      # 是否启用超大批量异步API
+      enable-mega-batch-async: true
+      # 是否启用降级处理
+      enable-fallback: true
+      # 分批处理时的批次间延迟（毫秒）
+      batch-delay-ms: 100
+      # 最大单次处理文件数（超过此数量强制分批）
+      max-single-batch-size: 3000
+
+# ==================== 应用信息配置 ====================
+info:
+  app:
+    name: 木林森图片上传服务端
+    version: 1.0.0
+    description: 基于Spring Boot的图片上传管理系统服务端
+    developer: MLS Development Team
+    contact: dev@mls.com

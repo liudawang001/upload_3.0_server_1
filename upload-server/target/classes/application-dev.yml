@@ -1,0 +1,27 @@
+# 开发环境配置
+spring:
+  datasource:
+    url: jdbc:mysql://192.168.1.78:3306/test_02?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: mls01
+    password: 12345@Mls
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+
+# 开发环境特征提取服务配置
+app:
+  feature:
+    extraction:
+      docker:
+        enabled: false  # 开发环境暂时禁用
+        url: http://192.168.0.79:5000/extract
+
+# 开发环境日志配置
+logging:
+  level:
+    root: DEBUG
+    com.mls.upload.server: DEBUG
+    org.springframework.web: DEBUG
+    org.mybatis: DEBUG
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

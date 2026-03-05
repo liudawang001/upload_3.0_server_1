@@ -1,0 +1,11 @@
+com\mls\upload\client\integration\ExportMatchedImagesIntegrationTest.class
+com\mls\upload\client\service\ExcelColumnWidthTest.class
+com\mls\upload\client\service\ExportMatchedImagesTest.class
+com\mls\upload\client\service\AuthServiceTest.class
+com\mls\upload\client\service\DuplicateProductCodeTest.class
+com\mls\upload\client\service\ExportFailedRecordsTest.class
+com\mls\upload\client\controller\UploadProgressTest.class
+com\mls\upload\client\integration\BusinessFlowIntegrationTest.class
+com\mls\upload\client\service\ExcelServiceTest.class
+com\mls\upload\client\controller\ExportButtonEnableTest.class
+com\mls\upload\client\service\CredentialManagerTest.class

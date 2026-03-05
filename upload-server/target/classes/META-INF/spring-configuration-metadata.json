@@ -1,0 +1,281 @@
+{
+  "groups": [
+    {
+      "name": "app.feature.extraction.docker",
+      "type": "com.mls.upload.server.config.FeatureExtractionProperties",
+      "sourceType": "com.mls.upload.server.config.FeatureExtractionProperties"
+    },
+    {
+      "name": "cache.refresh",
+      "type": "com.mls.upload.server.config.CacheRefreshProperties",
+      "sourceType": "com.mls.upload.server.config.CacheRefreshProperties"
+    },
+    {
+      "name": "cache.refresh.batch",
+      "type": "com.mls.upload.server.config.CacheRefreshProperties$Batch",
+      "sourceType": "com.mls.upload.server.config.CacheRefreshProperties",
+      "sourceMethod": "public com.mls.upload.server.config.CacheRefreshProperties.Batch getBatch() "
+    },
+    {
+      "name": "cache.refresh.retry",
+      "type": "com.mls.upload.server.config.CacheRefreshProperties$Retry",
+      "sourceType": "com.mls.upload.server.config.CacheRefreshProperties",
+      "sourceMethod": "public com.mls.upload.server.config.CacheRefreshProperties.Retry getRetry() "
+    },
+    {
+      "name": "cache.refresh.thread-pool",
+      "type": "com.mls.upload.server.config.CacheRefreshProperties$ThreadPool",
+      "sourceType": "com.mls.upload.server.config.CacheRefreshProperties",
+      "sourceMethod": "public com.mls.upload.server.config.CacheRefreshProperties.ThreadPool getThreadPool() "
+    },
+    {
+      "name": "cache.refresh.timeout",
+      "type": "com.mls.upload.server.config.CacheRefreshProperties$Timeout",
+      "sourceType": "com.mls.upload.server.config.CacheRefreshProperties",
+      "sourceMethod": "public com.mls.upload.server.config.CacheRefreshProperties.Timeout getTimeout() "
+    }
+  ],
+  "properties": [
+    {
+      "name": "app.feature.extraction.docker.connect-timeout",
+      "type": "java.lang.Integer",
+      "description": "连接超时时间（毫秒） Docker服务连接建立的最大等待时间",
+      "sourceType": "com.mls.upload.server.config.FeatureExtractionProperties"
+    },
+    {
+      "name": "app.feature.extraction.docker.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用特征提取功能 默认为false，确保系统稳定性",
+      "sourceType": "com.mls.upload.server.config.FeatureExtractionProperties"
+    },
+    {
+      "name": "app.feature.extraction.docker.health-check-enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用健康检查 在调用特征提取前检查服务可用性",
+      "sourceType": "com.mls.upload.server.config.FeatureExtractionProperties"
+    },
+    {
+      "name": "app.feature.extraction.docker.health-check-url",
+      "type": "java.lang.String",
+      "description": "健康检查URL 用于检测Docker服务是否可用",
+      "sourceType": "com.mls.upload.server.config.FeatureExtractionProperties"
+    },
+    {
+      "name": "app.feature.extraction.docker.overwrite-existing",
+      "type": "java.lang.Boolean",
+      "description": "是否覆盖已存在的特征向量 true: 重新提取并覆盖已存在的特征向量 false: 跳过已存在特征向量的文件（默认行为，保持向后兼容）",
+      "sourceType": "com.mls.upload.server.config.FeatureExtractionProperties"
+    },
+    {
+      "name": "app.feature.extraction.docker.read-timeout",
+      "type": "java.lang.Integer",
+      "description": "读取超时时间（毫秒） 从Docker服务读取响应数据的最大等待时间",
+      "sourceType": "com.mls.upload.server.config.FeatureExtractionProperties"
+    },
+    {
+      "name": "app.feature.extraction.docker.retry-interval",
+      "type": "java.lang.Integer",
+      "description": "重试间隔时间（毫秒） 两次重试之间的等待时间",
+      "sourceType": "com.mls.upload.server.config.FeatureExtractionProperties"
+    },
+    {
+      "name": "app.feature.extraction.docker.retry-times",
+      "type": "java.lang.Integer",
+      "description": "重试次数 当Docker服务调用失败时的重试次数",
+      "sourceType": "com.mls.upload.server.config.FeatureExtractionProperties"
+    },
+    {
+      "name": "app.feature.extraction.docker.timeout",
+      "type": "java.lang.Integer",
+      "description": "请求超时时间（毫秒） 包含连接建立、数据传输和响应处理的总时间",
+      "sourceType": "com.mls.upload.server.config.FeatureExtractionProperties"
+    },
+    {
+      "name": "app.feature.extraction.docker.url",
+      "type": "java.lang.String",
+      "description": "Docker特征提取服务URL 根据Docker特征提取方法参考.md，使用\/api\/add_pic端点",
+      "sourceType": "com.mls.upload.server.config.FeatureExtractionProperties"
+    },
+    {
+      "name": "cache.refresh.batch.batch-delay-ms",
+      "type": "java.lang.Long",
+      "description": "分批处理时的批次间延迟（毫秒）",
+      "sourceType": "com.mls.upload.server.config.CacheRefreshProperties$Batch"
+    },
+    {
+      "name": "cache.refresh.batch.batch-timeout-seconds",
+      "type": "java.lang.Integer",
+      "description": "单个批次超时时间（秒）",
+      "sourceType": "com.mls.upload.server.config.CacheRefreshProperties$Batch"
+    },
+    {
+      "name": "cache.refresh.batch.collect-timeout",
+      "type": "java.lang.Long",
+      "description": "批量收集超时时间（毫秒）",
+      "sourceType": "com.mls.upload.server.config.CacheRefreshProperties$Batch"
+    },
+    {
+      "name": "cache.refresh.batch.default-batch-size",
+      "type": "java.lang.Integer",
+      "description": "默认批处理大小",
+      "sourceType": "com.mls.upload.server.config.CacheRefreshProperties$Batch"
+    },
+    {
+      "name": "cache.refresh.batch.enable-fallback",
+      "type": "java.lang.Boolean",
+      "description": "是否启用降级处理",
+      "sourceType": "com.mls.upload.server.config.CacheRefreshProperties$Batch"
+    },
+    {
+      "name": "cache.refresh.batch.enable-mega-batch-async",
+      "type": "java.lang.Boolean",
+      "description": "是否启用超大批量异步API",
+      "sourceType": "com.mls.upload.server.config.CacheRefreshProperties$Batch"
+    },
+    {
+      "name": "cache.refresh.batch.enable-memory-monitoring",
+      "type": "java.lang.Boolean",
+      "description": "是否启用内存监控",
+      "sourceType": "com.mls.upload.server.config.CacheRefreshProperties$Batch"
+    },
+    {
+      "name": "cache.refresh.batch.enable-parallel-processing",
+      "type": "java.lang.Boolean",
+      "description": "是否启用并行处理",
+      "sourceType": "com.mls.upload.server.config.CacheRefreshProperties$Batch"
+    },
+    {
+      "name": "cache.refresh.batch.enable-partial-success",
+      "type": "java.lang.Boolean",
+      "description": "是否允许部分成功",
+      "sourceType": "com.mls.upload.server.config.CacheRefreshProperties$Batch"
+    },
+    {
+      "name": "cache.refresh.batch.enable-progress-tracking",
+      "type": "java.lang.Boolean",
+      "description": "是否启用进度跟踪",
+      "sourceType": "com.mls.upload.server.config.CacheRefreshProperties$Batch"
+    },
+    {
+      "name": "cache.refresh.batch.large-batch-threshold",
+      "type": "java.lang.Integer",
+      "description": "大批量处理阈值（超过此数量使用大批量API）",
+      "sourceType": "com.mls.upload.server.config.CacheRefreshProperties$Batch"
+    },
+    {
+      "name": "cache.refresh.batch.max-batch-size",
+      "type": "java.lang.Integer",
+      "description": "最大批处理大小",
+      "sourceType": "com.mls.upload.server.config.CacheRefreshProperties$Batch"
+    },
+    {
+      "name": "cache.refresh.batch.max-concurrent-batches",
+      "type": "java.lang.Integer",
+      "description": "最大并发批次数",
+      "sourceType": "com.mls.upload.server.config.CacheRefreshProperties$Batch"
+    },
+    {
+      "name": "cache.refresh.batch.max-single-batch-size",
+      "type": "java.lang.Integer",
+      "description": "最大单次处理文件数（超过此数量强制分批）",
+      "sourceType": "com.mls.upload.server.config.CacheRefreshProperties$Batch"
+    },
+    {
+      "name": "cache.refresh.batch.max-wait-timeout",
+      "type": "java.lang.Long",
+      "description": "最大等待队列清空时间（毫秒）",
+      "sourceType": "com.mls.upload.server.config.CacheRefreshProperties$Batch"
+    },
+    {
+      "name": "cache.refresh.batch.mega-batch-threshold",
+      "type": "java.lang.Integer",
+      "description": "超大批量处理阈值（超过此数量使用异步API）",
+      "sourceType": "com.mls.upload.server.config.CacheRefreshProperties$Batch"
+    },
+    {
+      "name": "cache.refresh.batch.memory-threshold-mb",
+      "type": "java.lang.Integer",
+      "description": "内存使用阈值（MB）",
+      "sourceType": "com.mls.upload.server.config.CacheRefreshProperties$Batch"
+    },
+    {
+      "name": "cache.refresh.batch.optimal-batch-size",
+      "type": "java.lang.Integer",
+      "description": "最优批处理大小",
+      "sourceType": "com.mls.upload.server.config.CacheRefreshProperties$Batch"
+    },
+    {
+      "name": "cache.refresh.batch.progress-report-interval",
+      "type": "java.lang.Integer",
+      "description": "进度报告间隔（处理条数）",
+      "sourceType": "com.mls.upload.server.config.CacheRefreshProperties$Batch"
+    },
+    {
+      "name": "cache.refresh.batch.threshold",
+      "type": "java.lang.Integer",
+      "description": "批量处理阈值（超过此数量使用批量API）",
+      "sourceType": "com.mls.upload.server.config.CacheRefreshProperties$Batch"
+    },
+    {
+      "name": "cache.refresh.batch.total-timeout-seconds",
+      "type": "java.lang.Integer",
+      "description": "总处理超时时间（秒）",
+      "sourceType": "com.mls.upload.server.config.CacheRefreshProperties$Batch"
+    },
+    {
+      "name": "cache.refresh.enabled",
+      "type": "java.lang.Boolean",
+      "description": "缓存刷新功能开关",
+      "sourceType": "com.mls.upload.server.config.CacheRefreshProperties"
+    },
+    {
+      "name": "cache.refresh.retry.initial-delay",
+      "type": "java.lang.Long",
+      "description": "初始延迟（毫秒）",
+      "sourceType": "com.mls.upload.server.config.CacheRefreshProperties$Retry"
+    },
+    {
+      "name": "cache.refresh.retry.max-attempts",
+      "type": "java.lang.Integer",
+      "description": "最大重试次数",
+      "sourceType": "com.mls.upload.server.config.CacheRefreshProperties$Retry"
+    },
+    {
+      "name": "cache.refresh.target-url",
+      "type": "java.lang.String",
+      "description": "项目B的服务地址",
+      "sourceType": "com.mls.upload.server.config.CacheRefreshProperties"
+    },
+    {
+      "name": "cache.refresh.thread-pool.core-size",
+      "type": "java.lang.Integer",
+      "description": "核心线程数",
+      "sourceType": "com.mls.upload.server.config.CacheRefreshProperties$ThreadPool"
+    },
+    {
+      "name": "cache.refresh.thread-pool.max-size",
+      "type": "java.lang.Integer",
+      "description": "最大线程数",
+      "sourceType": "com.mls.upload.server.config.CacheRefreshProperties$ThreadPool"
+    },
+    {
+      "name": "cache.refresh.thread-pool.queue-capacity",
+      "type": "java.lang.Integer",
+      "description": "队列容量",
+      "sourceType": "com.mls.upload.server.config.CacheRefreshProperties$ThreadPool"
+    },
+    {
+      "name": "cache.refresh.timeout.connect",
+      "type": "java.lang.Integer",
+      "description": "连接超时（毫秒）",
+      "sourceType": "com.mls.upload.server.config.CacheRefreshProperties$Timeout"
+    },
+    {
+      "name": "cache.refresh.timeout.read",
+      "type": "java.lang.Integer",
+      "description": "读取超时（毫秒）",
+      "sourceType": "com.mls.upload.server.config.CacheRefreshProperties$Timeout"
+    }
+  ],
+  "hints": []
+}
