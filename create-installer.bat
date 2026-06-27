@@ -47,22 +47,30 @@ if exist "upload-client\start-client.bat" (
     echo ✓ 客户端启动脚本已复制
 )
 
-echo.
-echo 正在复制服务端文件...
-
-REM 复制服务端文件
-if exist "upload-server\target\upload-server.jar" (
-    copy "upload-server\target\upload-server.jar" "%SERVER_DIR%\"
-    echo ✓ 服务端jar文件已复制
-) else (
-    echo ✗ 错误：未找到服务端jar文件，请先运行 mvn package
-    pause
-    exit /b 1
+if exist "upload-client\src\main\resources\application.properties" (
+    copy "upload-client\src\main\resources\application.properties" "%CLIENT_DIR%\application.properties"
+    echo ✓ 客户端外置配置文件已复制
 )
 
-if exist "upload-server\start-server.bat" (
-    copy "upload-server\start-server.bat" "%SERVER_DIR%\"
-    echo ✓ 服务端启动脚本已复制
+echo.
+echo 正在复制Linux服务端部署参考文件...
+
+REM 复制服务端文件（服务端正式部署在Linux，本安装包以Windows客户端分发为主）
+if exist "upload-server\target\upload-server.jar" (
+    copy "upload-server\target\upload-server.jar" "%SERVER_DIR%\"
+    echo ✓ 服务端jar文件已复制（供Linux管理员部署参考）
+) else (
+    echo ! 未找到服务端jar文件，跳过；Windows用户只需要客户端EXE
+)
+
+if exist "upload-server\start-server.sh" (
+    copy "upload-server\start-server.sh" "%SERVER_DIR%\"
+    echo ✓ Linux服务端启动脚本已复制
+)
+
+if exist "upload-server\deploy" (
+    xcopy "upload-server\deploy" "%SERVER_DIR%\deploy" /s /e /i
+    echo ✓ Linux systemd部署文件已复制
 )
 
 REM 复制配置文件
@@ -95,6 +103,16 @@ if exist "技术方案详细说明.md" (
     echo ✓ 技术方案已复制
 )
 
+if exist "Linux手册-图片上传软件.md" (
+    copy "Linux手册-图片上传软件.md" "%DOCS_DIR%\"
+    echo ✓ Linux部署手册已复制
+)
+
+if exist "项目B后端Linux部署检查与修改记录.md" (
+    copy "项目B后端Linux部署检查与修改记录.md" "%DOCS_DIR%\"
+    echo ✓ Linux部署检查记录已复制
+)
+
 echo.
 echo 正在创建安装脚本...
 
@@ -115,18 +133,14 @@ echo ^) >> %INSTALL_DIR%\install.bat
 echo echo ✓ Java环境检查通过 >> %INSTALL_DIR%\install.bat
 echo echo. >> %INSTALL_DIR%\install.bat
 echo echo 安装选项： >> %INSTALL_DIR%\install.bat
-echo echo 1. 安装客户端 >> %INSTALL_DIR%\install.bat
-echo echo 2. 安装服务端 >> %INSTALL_DIR%\install.bat
-echo echo 3. 安装完整系统 >> %INSTALL_DIR%\install.bat
-echo echo 4. 查看文档 >> %INSTALL_DIR%\install.bat
-echo echo 5. 退出 >> %INSTALL_DIR%\install.bat
+echo echo 1. 安装Windows客户端 >> %INSTALL_DIR%\install.bat
+echo echo 2. 查看文档 >> %INSTALL_DIR%\install.bat
+echo echo 3. 退出 >> %INSTALL_DIR%\install.bat
 echo echo. >> %INSTALL_DIR%\install.bat
-echo set /p choice=请选择安装选项 ^(1-5^): >> %INSTALL_DIR%\install.bat
+echo set /p choice=请选择安装选项 ^(1-3^): >> %INSTALL_DIR%\install.bat
 echo if "%%choice%%"=="1" goto install_client >> %INSTALL_DIR%\install.bat
-echo if "%%choice%%"=="2" goto install_server >> %INSTALL_DIR%\install.bat
-echo if "%%choice%%"=="3" goto install_full >> %INSTALL_DIR%\install.bat
-echo if "%%choice%%"=="4" goto show_docs >> %INSTALL_DIR%\install.bat
-echo if "%%choice%%"=="5" goto exit >> %INSTALL_DIR%\install.bat
+echo if "%%choice%%"=="2" goto show_docs >> %INSTALL_DIR%\install.bat
+echo if "%%choice%%"=="3" goto exit >> %INSTALL_DIR%\install.bat
 echo goto install >> %INSTALL_DIR%\install.bat
 echo. >> %INSTALL_DIR%\install.bat
 echo :install_client >> %INSTALL_DIR%\install.bat
@@ -134,24 +148,6 @@ echo echo 正在安装客户端... >> %INSTALL_DIR%\install.bat
 echo xcopy client C:\MLS-Upload-Client\ /s /e /i /y >> %INSTALL_DIR%\install.bat
 echo echo ✓ 客户端安装完成 >> %INSTALL_DIR%\install.bat
 echo echo 安装路径：C:\MLS-Upload-Client\ >> %INSTALL_DIR%\install.bat
-echo goto end >> %INSTALL_DIR%\install.bat
-echo. >> %INSTALL_DIR%\install.bat
-echo :install_server >> %INSTALL_DIR%\install.bat
-echo echo 正在安装服务端... >> %INSTALL_DIR%\install.bat
-echo xcopy server C:\MLS-Upload-Server\ /s /e /i /y >> %INSTALL_DIR%\install.bat
-echo echo ✓ 服务端安装完成 >> %INSTALL_DIR%\install.bat
-echo echo 安装路径：C:\MLS-Upload-Server\ >> %INSTALL_DIR%\install.bat
-echo goto end >> %INSTALL_DIR%\install.bat
-echo. >> %INSTALL_DIR%\install.bat
-echo :install_full >> %INSTALL_DIR%\install.bat
-echo echo 正在安装完整系统... >> %INSTALL_DIR%\install.bat
-echo xcopy client C:\MLS-Upload-Client\ /s /e /i /y >> %INSTALL_DIR%\install.bat
-echo xcopy server C:\MLS-Upload-Server\ /s /e /i /y >> %INSTALL_DIR%\install.bat
-echo xcopy docs C:\MLS-Upload-System\docs\ /s /e /i /y >> %INSTALL_DIR%\install.bat
-echo echo ✓ 系统安装完成 >> %INSTALL_DIR%\install.bat
-echo echo 客户端路径：C:\MLS-Upload-Client\ >> %INSTALL_DIR%\install.bat
-echo echo 服务端路径：C:\MLS-Upload-Server\ >> %INSTALL_DIR%\install.bat
-echo echo 文档路径：C:\MLS-Upload-System\docs\ >> %INSTALL_DIR%\install.bat
 echo goto end >> %INSTALL_DIR%\install.bat
 echo. >> %INSTALL_DIR%\install.bat
 echo :show_docs >> %INSTALL_DIR%\install.bat
@@ -183,7 +179,7 @@ echo. >> %INSTALL_DIR%\README.md
 echo ## 文件结构 >> %INSTALL_DIR%\README.md
 echo. >> %INSTALL_DIR%\README.md
 echo - `client/` - 客户端程序文件 >> %INSTALL_DIR%\README.md
-echo - `server/` - 服务端程序文件 >> %INSTALL_DIR%\README.md
+echo - `server/` - Linux服务端部署参考文件，正式部署请查看Linux手册 >> %INSTALL_DIR%\README.md
 echo - `docs/` - 系统文档 >> %INSTALL_DIR%\README.md
 echo - `install.bat` - 安装脚本 >> %INSTALL_DIR%\README.md
 echo. >> %INSTALL_DIR%\README.md
@@ -191,7 +187,7 @@ echo ## 系统要求 >> %INSTALL_DIR%\README.md
 echo. >> %INSTALL_DIR%\README.md
 echo - Windows 7/8/10/11 >> %INSTALL_DIR%\README.md
 echo - JDK 8 或更高版本 >> %INSTALL_DIR%\README.md
-echo - MySQL 8.0 ^(服务端^) >> %INSTALL_DIR%\README.md
+echo - 服务端运行在Linux服务器 192.168.30.114，Windows用户不需要本机安装服务端 >> %INSTALL_DIR%\README.md
 echo. >> %INSTALL_DIR%\README.md
 echo 版本：v1.0.0 >> %INSTALL_DIR%\README.md
 echo 日期：2025-09-11 >> %INSTALL_DIR%\README.md
@@ -207,12 +203,12 @@ echo 安装包位置：%INSTALL_DIR%\
 echo.
 echo 包含文件：
 echo ✓ 客户端程序 (upload-client.exe)
-echo ✓ 服务端程序 (upload-server.jar)
+echo ✓ Linux服务端部署参考文件
 echo ✓ 启动脚本
 echo ✓ 配置文件
 echo ✓ 完整文档
 echo ✓ 安装程序
 echo.
-echo 您可以将整个 %INSTALL_DIR% 文件夹打包分发给用户。
+echo 您可以将 %CLIENT_DIR% 文件夹打包分发给Windows用户。
 echo.
 pause

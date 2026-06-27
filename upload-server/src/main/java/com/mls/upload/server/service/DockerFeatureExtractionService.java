@@ -18,6 +18,60 @@ import java.io.File;
 public interface DockerFeatureExtractionService {
 
     /**
+     * CLIP特征向量数据结构。
+     */
+    class ClipFeatureVector {
+        private final float[] feature;
+        private final int featureDim;
+        private final String modelName;
+        private final boolean rotationAugment;
+        private final Float clipTime;
+
+        public ClipFeatureVector(float[] feature, int featureDim, String modelName,
+                                 boolean rotationAugment, Float clipTime) {
+            this.feature = feature;
+            this.featureDim = featureDim;
+            this.modelName = modelName;
+            this.rotationAugment = rotationAugment;
+            this.clipTime = clipTime;
+        }
+
+        public float[] getFeature() {
+            return feature;
+        }
+
+        public int getFeatureDim() {
+            return featureDim;
+        }
+
+        public String getModelName() {
+            return modelName;
+        }
+
+        public boolean isRotationAugment() {
+            return rotationAugment;
+        }
+
+        public Float getClipTime() {
+            return clipTime;
+        }
+
+        public boolean isValid() {
+            return feature != null && feature.length == featureDim && featureDim > 0;
+        }
+
+        @Override
+        public String toString() {
+            return "ClipFeatureVector{" +
+                    "featureDim=" + featureDim +
+                    ", modelName='" + modelName + '\'' +
+                    ", rotationAugment=" + rotationAugment +
+                    ", clipTime=" + clipTime +
+                    '}';
+        }
+    }
+
+    /**
      * 多特征向量数据结构
      * 包含Docker服务返回的5种特征向量
      */
@@ -113,6 +167,23 @@ public interface DockerFeatureExtractionService {
      * @throws IllegalArgumentException 如果图片数据无效
      */
     MultiFeatureVector extractFeatures(byte[] imageBytes, String imageName);
+
+    /**
+     * 从图片文件提取CLIP特征向量。
+     *
+     * @param imageFile 图片文件
+     * @return CLIP特征向量对象，如果提取失败返回null
+     */
+    ClipFeatureVector extractClipFeatures(File imageFile);
+
+    /**
+     * 从图片字节数组提取CLIP特征向量。
+     *
+     * @param imageBytes 图片字节数组
+     * @param imageName 图片名称
+     * @return CLIP特征向量对象，如果提取失败返回null
+     */
+    ClipFeatureVector extractClipFeatures(byte[] imageBytes, String imageName);
 
     /**
      * 异步提取特征向量并保存到数据库

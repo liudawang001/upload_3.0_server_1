@@ -28,6 +28,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
             .authorizeRequests()
                 // 允许健康检查端点无需认证
                 .antMatchers("/auth/health").permitAll()
+                .antMatchers("/upload/health").permitAll()
+                .antMatchers("/actuator/health", "/actuator/info").permitAll()
                 // 允许登录端点无需认证
                 .antMatchers("/auth/login").permitAll()
                 // 临时允许上传接口无需认证（用于测试）

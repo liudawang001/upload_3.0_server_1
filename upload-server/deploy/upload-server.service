@@ -1,0 +1,18 @@
+[Unit]
+Description=MLS Upload Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mls
+Group=mls
+WorkingDirectory=/opt/mls/upload-server
+EnvironmentFile=-/etc/mls-upload-server.env
+ExecStart=/opt/mls/upload-server/start-server.sh
+Restart=always
+RestartSec=10
+SuccessExitStatus=143
+
+[Install]
+WantedBy=multi-user.target

@@ -1,20 +1,39 @@
 # 生产环境配置
 spring:
   datasource:
-    url: jdbc:mysql://192.168.0.79:3306/test_02?useUnicode=true&characterEncoding=utf8&useSSL=true&serverTimezone=Asia/Shanghai
-    username: mls01
-    password: 12345@Mls
+    url: ${UPLOAD_DB_URL:jdbc:mysql://127.0.0.1:3306/pic_system_mls?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
+    username: ${UPLOAD_DB_USERNAME:mls01}
+    password: ${UPLOAD_DB_PASSWORD:change-me}
     hikari:
       maximum-pool-size: 20
       minimum-idle: 5
 
 # 生产环境特征提取服务配置
 app:
+  file:
+    upload:
+      flower-path: ${UPLOAD_FLOWER_PATH:/data/MLS_Pic/mls_pic}
+      color-path: ${UPLOAD_COLOR_PATH:/data/MLS_Pic/mls_pic/color_scheme}
   feature:
     extraction:
       docker:
         enabled: true  # 生产环境启用
-        url: http://192.168.0.79:5000/extract
+        url: ${CLIP_DOCKER_EXTRACT_URL:http://192.168.30.114:8000/api/extract}
+        timeout: ${CLIP_DOCKER_TIMEOUT:120000}
+        connect-timeout: ${CLIP_DOCKER_CONNECT_TIMEOUT:30000}
+        read-timeout: ${CLIP_DOCKER_READ_TIMEOUT:120000}
+        retry-times: 3
+        retry-interval: 2000
+        health-check-url: ${CLIP_DOCKER_HEALTH_URL:http://192.168.30.114:8000/health}
+        health-check-enabled: true
+        rotation-augment: true
+        feature-dim: 768
+        model-name: clip-vit-large-patch14
+        overwrite-existing: true
+
+cache:
+  refresh:
+    target-url: ${PROJECT_A_BASE_URL:http://127.0.0.1:8080}
 
 # 生产环境日志配置
 logging:
@@ -24,4 +43,4 @@ logging:
     org.springframework.web: WARN
     org.mybatis: WARN
   file:
-    name: /var/log/upload-server/application.log
+    name: ${UPLOAD_LOG_FILE:/data/logs/upload-server/application.log}

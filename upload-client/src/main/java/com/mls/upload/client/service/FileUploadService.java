@@ -236,7 +236,8 @@ public class FileUploadService {
                 uploadRequest.put("imageType", imageType); // 直接使用传入的数字代码（1或2）
                 uploadRequest.put("base64Data", base64Data);
                 uploadRequest.put("username", username);
-                uploadRequest.put("needFeatureExtraction", false);
+                uploadRequest.put("needFeatureExtraction",
+                    "1".equals(imageType) && ConfigUtil.isUploadFeatureExtractionEnabled());
 
                 // 如果是花型图且有Excel数据，添加Excel数据到请求中
                 if ("1".equals(imageType) && excelRowData != null) {

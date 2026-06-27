@@ -5,6 +5,7 @@ import com.mls.upload.server.service.CacheRefreshService;
 import com.mls.upload.server.service.DataService;
 import com.mls.upload.server.service.DockerFeatureExtractionService;
 import com.mls.upload.server.util.PerformanceMonitor;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +14,7 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.File;
@@ -42,6 +44,7 @@ import javax.annotation.PreDestroy;
 public class DockerFeatureExtractionServiceImpl implements DockerFeatureExtractionService {
 
     private static final Logger logger = LoggerFactory.getLogger(DockerFeatureExtractionServiceImpl.class);
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @Autowired
     private FeatureExtractionProperties properties;
@@ -104,12 +107,14 @@ public class DockerFeatureExtractionServiceImpl implements DockerFeatureExtracti
             ResponseEntity<String> response = restTemplate.getForEntity(healthUrl, String.class);
             PerformanceMonitor.endTimer(PerformanceMonitor.TimerNames.DOCKER_HEALTH_CHECK);
 
-            boolean isAvailable = response.getStatusCode() == HttpStatus.OK;
+            boolean isAvailable = response.getStatusCode() == HttpStatus.OK
+                && isHealthyClipResponse(response.getBody());
 
             if (isAvailable) {
                 logger.debug("Docker服务健康检查通过");
             } else {
-                logger.warn("Docker服务健康检查失败，状态码: {}", response.getStatusCode());
+                logger.warn("Docker服务健康检查失败，状态码: {}, body: {}",
+                           response.getStatusCode(), response.getBody());
                 PerformanceMonitor.recordError(PerformanceMonitor.TimerNames.DOCKER_HEALTH_CHECK);
             }
 
@@ -124,6 +129,37 @@ public class DockerFeatureExtractionServiceImpl implements DockerFeatureExtracti
         }
     }
 
+    @SuppressWarnings("unchecked")
+    private boolean isHealthyClipResponse(String responseBody) {
+        if (responseBody == null || responseBody.trim().isEmpty()) {
+            logger.warn("CLIP健康检查响应为空");
+            return false;
+        }
+
+        try {
+            Map<String, Object> health = OBJECT_MAPPER.readValue(responseBody, Map.class);
+            Object status = health.get("status");
+            Object modelLoaded = health.get("model_loaded");
+            Object featureDim = health.get("feature_dim");
+
+            boolean statusOk = "ok".equalsIgnoreCase(String.valueOf(status));
+            boolean loaded = Boolean.TRUE.equals(modelLoaded)
+                || "true".equalsIgnoreCase(String.valueOf(modelLoaded));
+            boolean dimMatched = featureDim instanceof Number
+                && ((Number) featureDim).intValue() == properties.getFeatureDim();
+
+            if (!statusOk || !loaded || !dimMatched) {
+                logger.warn("CLIP健康检查内容不符合要求: status={}, model_loaded={}, feature_dim={}, expectedDim={}",
+                           status, modelLoaded, featureDim, properties.getFeatureDim());
+            }
+
+            return statusOk && loaded && dimMatched;
+        } catch (Exception e) {
+            logger.warn("解析CLIP健康检查响应失败: {}, body={}", e.getMessage(), responseBody);
+            return false;
+        }
+    }
+
     @Override
     public boolean isOverwriteEnabled() {
         return properties.isOverwriteExisting();
@@ -131,6 +167,38 @@ public class DockerFeatureExtractionServiceImpl implements DockerFeatureExtracti
 
     @Override
     public MultiFeatureVector extractFeatures(File imageFile) {
+        ClipFeatureVector clipFeature = extractClipFeatures(imageFile);
+        if (clipFeature == null || !clipFeature.isValid()) {
+            return null;
+        }
+
+        return new MultiFeatureVector(
+            new float[256],
+            new float[72],
+            new float[256],
+            new float[512],
+            clipFeature.getFeature()
+        );
+    }
+
+    @Override
+    public MultiFeatureVector extractFeatures(byte[] imageBytes, String imageName) {
+        ClipFeatureVector clipFeature = extractClipFeatures(imageBytes, imageName);
+        if (clipFeature == null || !clipFeature.isValid()) {
+            return null;
+        }
+
+        return new MultiFeatureVector(
+            new float[256],
+            new float[72],
+            new float[256],
+            new float[512],
+            clipFeature.getFeature()
+        );
+    }
+
+    @Override
+    public ClipFeatureVector extractClipFeatures(File imageFile) {
         if (imageFile == null || !imageFile.exists() || !imageFile.isFile()) {
             throw new IllegalArgumentException("图片文件无效: " + 
                 (imageFile != null ? imageFile.getAbsolutePath() : "null"));
@@ -138,7 +206,7 @@ public class DockerFeatureExtractionServiceImpl implements DockerFeatureExtracti
 
         try {
             byte[] imageBytes = Files.readAllBytes(imageFile.toPath());
-            return extractFeatures(imageBytes, imageFile.getName());
+            return extractClipFeatures(imageBytes, imageFile.getName());
         } catch (IOException e) {
             logger.error("读取图片文件失败: {}", imageFile.getAbsolutePath(), e);
             return null;
@@ -146,7 +214,7 @@ public class DockerFeatureExtractionServiceImpl implements DockerFeatureExtracti
     }
 
     @Override
-    public MultiFeatureVector extractFeatures(byte[] imageBytes, String imageName) {
+    public ClipFeatureVector extractClipFeatures(byte[] imageBytes, String imageName) {
         if (imageBytes == null || imageBytes.length == 0) {
             throw new IllegalArgumentException("图片数据为空");
         }
@@ -156,7 +224,7 @@ public class DockerFeatureExtractionServiceImpl implements DockerFeatureExtracti
             return null;
         }
 
-        logger.info("开始提取图片特征: {}, 大小: {} bytes", imageName, imageBytes.length);
+        logger.info("开始提取CLIP图片特征: {}, 大小: {} bytes", imageName, imageBytes.length);
 
         // 开始性能监控
         PerformanceMonitor.startTimer(PerformanceMonitor.TimerNames.DOCKER_FEATURE_EXTRACTION);
@@ -172,21 +240,22 @@ public class DockerFeatureExtractionServiceImpl implements DockerFeatureExtracti
 
             // 解析响应数据
             PerformanceMonitor.startTimer(PerformanceMonitor.TimerNames.FEATURE_VECTOR_PARSING);
-            MultiFeatureVector features = parseFeatureResponse(response);
+            ClipFeatureVector features = parseFeatureResponse(response);
             PerformanceMonitor.endTimer(PerformanceMonitor.TimerNames.FEATURE_VECTOR_PARSING);
 
             if (features != null && features.isValid()) {
-                logger.info("特征提取成功: {}", imageName);
+                logger.info("CLIP特征提取成功: {}, featureDim={}, modelName={}",
+                           imageName, features.getFeatureDim(), features.getModelName());
                 PerformanceMonitor.endTimer(PerformanceMonitor.TimerNames.DOCKER_FEATURE_EXTRACTION);
                 return features;
             } else {
-                logger.warn("特征提取失败，返回数据无效: {}", imageName);
+                logger.warn("CLIP特征提取失败，返回数据无效: {}", imageName);
                 PerformanceMonitor.recordError(PerformanceMonitor.TimerNames.DOCKER_FEATURE_EXTRACTION);
                 return null;
             }
 
         } catch (Exception e) {
-            logger.error("特征提取异常: {}", imageName, e);
+            logger.error("CLIP特征提取异常: {}", imageName, e);
             PerformanceMonitor.recordError(PerformanceMonitor.TimerNames.DOCKER_FEATURE_EXTRACTION);
             return null;
         }
@@ -207,21 +276,22 @@ public class DockerFeatureExtractionServiceImpl implements DockerFeatureExtracti
                 logger.info("开始串行化特征提取: filename={}, 剩余队列任务={}", filename, remainingTasks);
 
                 File imageFile = new File(imagePath);
-                MultiFeatureVector features = extractFeatures(imageFile);
+                ClipFeatureVector features = extractClipFeatures(imageFile);
 
                 if (features != null && features.isValid()) {
-                    // 转换为BLOB格式并保存
-                    byte[] colorBlob = floatArrayToBlob(features.getColor());
-                    byte[] glcmBlob = floatArrayToBlob(features.getGlcm());
-                    byte[] lbpBlob = floatArrayToBlob(features.getLbp());
-                    byte[] vggBlob = floatArrayToBlob(features.getVgg());
-                    byte[] vitBlob = floatArrayToBlob(features.getVit());
+                    // 转换为BLOB格式并保存到image_feature_clip
+                    byte[] clipBlob = floatArrayToBlob(features.getFeature());
 
-                    boolean saved = dataService.saveFeatureVector(
-                        filename, colorBlob, glcmBlob, lbpBlob, vggBlob, vitBlob);
+                    boolean saved = dataService.saveClipFeatureVector(
+                        filename,
+                        clipBlob,
+                        features.getFeatureDim(),
+                        features.getModelName(),
+                        features.isRotationAugment(),
+                        features.getClipTime());
 
                     if (saved) {
-                        logger.info("串行化特征向量保存成功: filename={}, 剩余队列任务={}",
+                        logger.info("串行化CLIP特征向量保存成功: filename={}, 剩余队列任务={}",
                                    filename, queueSize.get());
 
                         // 特征向量保存成功后，收集文件名用于后续批量缓存刷新（仅花型图）
@@ -244,11 +314,11 @@ public class DockerFeatureExtractionServiceImpl implements DockerFeatureExtracti
                             }
                         }
                     } else {
-                        logger.warn("串行化特征向量保存失败: filename={}, 剩余队列任务={}",
+                        logger.warn("串行化CLIP特征向量保存失败: filename={}, 剩余队列任务={}",
                                    filename, queueSize.get());
                     }
                 } else {
-                    logger.warn("串行化特征提取失败，无法保存: filename={}, 剩余队列任务={}",
+                    logger.warn("串行化CLIP特征提取失败，无法保存: filename={}, 剩余队列任务={}",
                                filename, queueSize.get());
                 }
 
@@ -343,10 +413,12 @@ public class DockerFeatureExtractionServiceImpl implements DockerFeatureExtracti
         // 构建multipart/form-data请求
         MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
         body.add("Pic", dataUri);
+        body.add("rotation_augment", String.valueOf(properties.isRotationAugment()));
 
         // 添加详细调试日志
-        logger.debug("发送数据: Pic字段长度={}, 数据URI前缀={}",
+        logger.debug("发送数据: Pic字段长度={}, rotation_augment={}, 数据URI前缀={}",
                     dataUri.length(),
+                    properties.isRotationAugment(),
                     dataUri.length() > 50 ? dataUri.substring(0, 50) + "..." : dataUri);
 
         // 检查数据URI大小
@@ -384,34 +456,51 @@ public class DockerFeatureExtractionServiceImpl implements DockerFeatureExtracti
      * 解析Docker服务响应数据
      */
     @SuppressWarnings("unchecked")
-    private MultiFeatureVector parseFeatureResponse(Map<String, Object> response) {
+    private ClipFeatureVector parseFeatureResponse(Map<String, Object> response) {
         if (response == null) {
             logger.warn("Docker服务响应为空");
             return null;
         }
 
         try {
+            Object codeObject = response.get("code");
+            if (!(codeObject instanceof Number) || ((Number) codeObject).intValue() != 0) {
+                logger.warn("CLIP Docker响应code异常: code={}, message={}",
+                           codeObject, response.get("message"));
+                return null;
+            }
+
             Map<String, Object> dataMap = (Map<String, Object>) response.get("data");
             if (dataMap == null) {
                 logger.warn("响应中缺少data字段");
                 return null;
             }
 
-            List<List<Double>> vectorsList = (List<List<Double>>) dataMap.get("vectors");
-            if (vectorsList == null || vectorsList.size() != 5) {
-                logger.warn("响应中vectors字段无效，期望5个向量，实际: {}",
-                           vectorsList != null ? vectorsList.size() : 0);
+            Object featureObject = dataMap.get("feature");
+            if (!(featureObject instanceof List)) {
+                logger.warn("响应中缺少data.feature字段或类型无效");
                 return null;
             }
 
-            // 转换为float数组
-            float[] colorFeatures = toFloatArray(vectorsList.get(0));
-            float[] glcmFeatures = toFloatArray(vectorsList.get(1));
-            float[] lbpFeatures = toFloatArray(vectorsList.get(2));
-            float[] vggFeatures = toFloatArray(vectorsList.get(3));
-            float[] vitFeatures = toFloatArray(vectorsList.get(4));
+            float[] clipFeature = toFloatArray((List<?>) featureObject);
+            int expectedDim = properties.getFeatureDim();
+            if (clipFeature == null || clipFeature.length != expectedDim) {
+                logger.warn("CLIP特征维度异常，expected={}, actual={}",
+                           expectedDim, clipFeature == null ? 0 : clipFeature.length);
+                return null;
+            }
 
-            return new MultiFeatureVector(colorFeatures, glcmFeatures, lbpFeatures, vggFeatures, vitFeatures);
+            int responseFeatureDim = getIntValue(dataMap.get("feature_dim"), expectedDim);
+            if (responseFeatureDim != expectedDim) {
+                logger.warn("CLIP响应feature_dim异常，expected={}, actual={}", expectedDim, responseFeatureDim);
+                return null;
+            }
+
+            String modelName = getStringValue(dataMap.get("model_name"), properties.getModelName());
+            boolean rotationAugment = getBooleanValue(dataMap.get("rotation_augment"), properties.isRotationAugment());
+            Float clipTime = getFloatValue(dataMap.get("extract_time"));
+
+            return new ClipFeatureVector(clipFeature, expectedDim, modelName, rotationAugment, clipTime);
 
         } catch (Exception e) {
             logger.error("解析Docker响应数据异常", e);
@@ -429,6 +518,10 @@ public class DockerFeatureExtractionServiceImpl implements DockerFeatureExtracti
         for (int attempt = 0; attempt <= maxRetries; attempt++) {
             try {
                 return operation.get();
+            } catch (HttpClientErrorException e) {
+                logger.error("CLIP Docker返回客户端错误，不重试: status={}, body={}",
+                           e.getStatusCode(), e.getResponseBodyAsString());
+                throw e;
             } catch (Exception e) {
                 if (attempt == maxRetries) {
                     logger.error("串行化处理：重试{}次后仍然失败，队列剩余任务={}, error={}",
@@ -454,18 +547,57 @@ public class DockerFeatureExtractionServiceImpl implements DockerFeatureExtracti
     /**
      * 将Double列表转换为float数组
      */
-    private float[] toFloatArray(List<Double> doubleList) {
-        if (doubleList == null) {
+    private float[] toFloatArray(List<?> values) {
+        if (values == null) {
             return null;
         }
 
-        float[] floatArray = new float[doubleList.size()];
-        for (int i = 0; i < doubleList.size(); i++) {
-            Double value = doubleList.get(i);
-            floatArray[i] = value != null ? value.floatValue() : 0.0f;
+        float[] floatArray = new float[values.size()];
+        for (int i = 0; i < values.size(); i++) {
+            Object value = values.get(i);
+            if (!(value instanceof Number)) {
+                logger.warn("CLIP特征包含非数值元素: index={}, type={}",
+                           i, value == null ? "null" : value.getClass().getName());
+                return null;
+            }
+            floatArray[i] = ((Number) value).floatValue();
         }
 
         return floatArray;
+    }
+
+    private int getIntValue(Object value, int defaultValue) {
+        if (value instanceof Number) {
+            return ((Number) value).intValue();
+        }
+        return defaultValue;
+    }
+
+    private String getStringValue(Object value, String defaultValue) {
+        if (value instanceof String && !((String) value).trim().isEmpty()) {
+            return ((String) value).trim();
+        }
+        return defaultValue;
+    }
+
+    private boolean getBooleanValue(Object value, boolean defaultValue) {
+        if (value instanceof Boolean) {
+            return (Boolean) value;
+        }
+        if (value instanceof String) {
+            return Boolean.parseBoolean((String) value);
+        }
+        if (value instanceof Number) {
+            return ((Number) value).intValue() != 0;
+        }
+        return defaultValue;
+    }
+
+    private Float getFloatValue(Object value) {
+        if (value instanceof Number) {
+            return ((Number) value).floatValue();
+        }
+        return null;
     }
 
     /**

@@ -1,9 +1,9 @@
 # 开发环境配置
 spring:
   datasource:
-    url: jdbc:mysql://192.168.1.78:3306/test_02?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-    username: mls01
-    password: 12345@Mls
+    url: ${UPLOAD_DEV_DB_URL:jdbc:mysql://127.0.0.1:3306/pic_system_mls_dev?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
+    username: ${UPLOAD_DEV_DB_USERNAME:mls01}
+    password: ${UPLOAD_DEV_DB_PASSWORD:change-me}
     hikari:
       maximum-pool-size: 10
       minimum-idle: 2
@@ -14,7 +14,11 @@ app:
     extraction:
       docker:
         enabled: false  # 开发环境暂时禁用
-        url: http://192.168.0.79:5000/extract
+        url: ${CLIP_DOCKER_EXTRACT_URL:http://192.168.30.114:8000/api/extract}
+        health-check-url: ${CLIP_DOCKER_HEALTH_URL:http://192.168.30.114:8000/health}
+        rotation-augment: true
+        feature-dim: 768
+        model-name: clip-vit-large-patch14
 
 # 开发环境日志配置
 logging:

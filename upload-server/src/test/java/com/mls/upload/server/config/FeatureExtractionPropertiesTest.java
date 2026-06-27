@@ -5,6 +5,7 @@ import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
 
@@ -20,14 +21,17 @@ import static org.junit.Assert.*;
 @SpringBootTest(classes = FeatureExtractionPropertiesTest.TestConfig.class)
 @TestPropertySource(properties = {
     "app.feature.extraction.docker.enabled=true",
-    "app.feature.extraction.docker.url=http://test:5000/api/add_pic",
+    "app.feature.extraction.docker.url=http://test:8000/api/extract",
     "app.feature.extraction.docker.timeout=30000",
     "app.feature.extraction.docker.connect-timeout=15000",
     "app.feature.extraction.docker.read-timeout=45000",
     "app.feature.extraction.docker.retry-times=5",
     "app.feature.extraction.docker.retry-interval=2000",
-    "app.feature.extraction.docker.health-check-url=http://test:5000/health",
-    "app.feature.extraction.docker.health-check-enabled=false"
+    "app.feature.extraction.docker.health-check-url=http://test:8000/health",
+    "app.feature.extraction.docker.health-check-enabled=false",
+    "app.feature.extraction.docker.rotation-augment=true",
+    "app.feature.extraction.docker.feature-dim=768",
+    "app.feature.extraction.docker.model-name=clip-vit-large-patch14"
 })
 public class FeatureExtractionPropertiesTest {
 
@@ -38,14 +42,17 @@ public class FeatureExtractionPropertiesTest {
     public void testConfigurationPropertiesBinding() {
         // 测试配置属性绑定
         assertTrue("enabled应该为true", properties.isEnabled());
-        assertEquals("URL应该正确绑定", "http://test:5000/api/add_pic", properties.getUrl());
+        assertEquals("URL应该正确绑定", "http://test:8000/api/extract", properties.getUrl());
         assertEquals("timeout应该正确绑定", 30000, properties.getTimeout());
         assertEquals("connectTimeout应该正确绑定", 15000, properties.getConnectTimeout());
         assertEquals("readTimeout应该正确绑定", 45000, properties.getReadTimeout());
         assertEquals("retryTimes应该正确绑定", 5, properties.getRetryTimes());
         assertEquals("retryInterval应该正确绑定", 2000, properties.getRetryInterval());
-        assertEquals("healthCheckUrl应该正确绑定", "http://test:5000/health", properties.getHealthCheckUrl());
+        assertEquals("healthCheckUrl应该正确绑定", "http://test:8000/health", properties.getHealthCheckUrl());
         assertFalse("healthCheckEnabled应该为false", properties.isHealthCheckEnabled());
+        assertTrue("rotationAugment应该为true", properties.isRotationAugment());
+        assertEquals("featureDim应该为768", 768, properties.getFeatureDim());
+        assertEquals("modelName应该正确绑定", "clip-vit-large-patch14", properties.getModelName());
     }
 
     @Test
@@ -54,14 +61,17 @@ public class FeatureExtractionPropertiesTest {
         FeatureExtractionProperties defaultProps = new FeatureExtractionProperties();
         
         assertFalse("默认enabled应该为false", defaultProps.isEnabled());
-        assertEquals("默认URL", "http://192.168.1.78:5000/api/add_pic", defaultProps.getUrl());
+        assertEquals("默认URL", "http://192.168.30.114:8000/api/extract", defaultProps.getUrl());
         assertEquals("默认timeout", 60000, defaultProps.getTimeout());
         assertEquals("默认connectTimeout", 30000, defaultProps.getConnectTimeout());
         assertEquals("默认readTimeout", 60000, defaultProps.getReadTimeout());
         assertEquals("默认retryTimes", 3, defaultProps.getRetryTimes());
         assertEquals("默认retryInterval", 1000, defaultProps.getRetryInterval());
-        assertEquals("默认healthCheckUrl", "http://192.168.1.78:5000/health", defaultProps.getHealthCheckUrl());
+        assertEquals("默认healthCheckUrl", "http://192.168.30.114:8000/health", defaultProps.getHealthCheckUrl());
         assertTrue("默认healthCheckEnabled应该为true", defaultProps.isHealthCheckEnabled());
+        assertTrue("默认rotationAugment应该为true", defaultProps.isRotationAugment());
+        assertEquals("默认featureDim", 768, defaultProps.getFeatureDim());
+        assertEquals("默认modelName", "clip-vit-large-patch14", defaultProps.getModelName());
     }
 
     @Test
@@ -72,7 +82,7 @@ public class FeatureExtractionPropertiesTest {
         assertNotNull("toString不应该为null", toString);
         assertTrue("toString应该包含类名", toString.contains("FeatureExtractionProperties"));
         assertTrue("toString应该包含enabled", toString.contains("enabled=true"));
-        assertTrue("toString应该包含url", toString.contains("url='http://test:5000/api/add_pic'"));
+        assertTrue("toString应该包含url", toString.contains("url='http://test:8000/api/extract'"));
     }
 
     @Test
@@ -111,6 +121,7 @@ public class FeatureExtractionPropertiesTest {
     /**
      * 测试配置类
      */
+    @Configuration
     @EnableConfigurationProperties(FeatureExtractionProperties.class)
     static class TestConfig {
         // 空配置类，仅用于启用配置属性

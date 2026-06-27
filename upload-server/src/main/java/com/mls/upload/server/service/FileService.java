@@ -38,10 +38,10 @@ public class FileService {
     @Autowired
     private PicInfoMapper picInfoMapper;
 
-    @Value("${app.file.upload.flower-path:D:\\MLS_Pic\\mls_image_use}")
+    @Value("${app.file.upload.flower-path:/data/MLS_Pic/mls_pic}")
     private String flowerImagePath;
 
-    @Value("${app.file.upload.color-path:D:\\MLS_Pic\\mls_image_use\\color_scheme}")
+    @Value("${app.file.upload.color-path:/data/MLS_Pic/mls_pic/color_scheme}")
     private String colorImagePath;
 
     @Value("${app.file.upload.max-file-size:50}") // 50MB

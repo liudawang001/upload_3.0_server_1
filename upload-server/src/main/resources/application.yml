@@ -23,9 +23,9 @@ spring:
   
   # 数据源配置
   datasource:
-    url: jdbc:mysql://192.168.0.79:3306/test_02?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-    username: mls01
-    password: 12345@Mls
+    url: ${UPLOAD_DB_URL:jdbc:mysql://127.0.0.1:3306/pic_system_mls?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
+    username: ${UPLOAD_DB_USERNAME:mls01}
+    password: ${UPLOAD_DB_PASSWORD:change-me}
     driver-class-name: com.mysql.cj.jdbc.Driver
     
     # HikariCP连接池配置
@@ -86,9 +86,9 @@ app:
   file:
     upload:
       # 花型图存储路径
-      flower-path: D:\MLS_Pic\mls_image_use
+      flower-path: ${UPLOAD_FLOWER_PATH:/data/MLS_Pic/mls_pic}
       # 配色图存储路径
-      color-path: D:\MLS_Pic\mls_image_use\color_scheme
+      color-path: ${UPLOAD_COLOR_PATH:/data/MLS_Pic/mls_pic/color_scheme}
       # 临时文件路径
       temp-path: ${java.io.tmpdir}/upload-temp
       # 允许的文件类型
@@ -102,22 +102,28 @@ app:
       docker:
         # 是否启用特征提取功能（开发环境默认禁用）
         enabled: true
-        # Docker服务URL（根据Docker特征提取方法参考.md）
-        url: http://192.168.0.79:5000/api/add_pic
+        # CLIP Docker服务URL
+        url: ${CLIP_DOCKER_EXTRACT_URL:http://192.168.30.114:8000/api/extract}
         # 请求超时时间（毫秒）
-        timeout: 60000
+        timeout: ${CLIP_DOCKER_TIMEOUT:120000}
         # 连接超时时间（毫秒）
-        connect-timeout: 30000
+        connect-timeout: ${CLIP_DOCKER_CONNECT_TIMEOUT:30000}
         # 读取超时时间（毫秒）
-        read-timeout: 60000
+        read-timeout: ${CLIP_DOCKER_READ_TIMEOUT:120000}
         # 重试次数
         retry-times: 3
         # 重试间隔时间（毫秒）
-        retry-interval: 1000
+        retry-interval: 2000
         # 健康检查URL
-        health-check-url: http://192.168.0.79:5000/health
-        # 是否启用健康检查（Docker服务没有/health端点，暂时禁用）
-        health-check-enabled: false
+        health-check-url: ${CLIP_DOCKER_HEALTH_URL:http://192.168.30.114:8000/health}
+        # 是否启用健康检查
+        health-check-enabled: true
+        # CLIP旋转增强
+        rotation-augment: true
+        # CLIP特征维度
+        feature-dim: 768
+        # CLIP模型名称
+        model-name: clip-vit-large-patch14
 
         # 覆盖策略配置
         # 是否覆盖已存在的特征向量
@@ -186,8 +192,8 @@ cache:
   refresh:
     # 缓存刷新功能开关
     enabled: true
-    # 项目B的服务地址
-    target-url: "http://192.168.0.79:8080"
+    # 项目A的服务基础地址，不包含/api
+    target-url: ${PROJECT_A_BASE_URL:http://127.0.0.1:8080}
     # 超时配置
     timeout:
       # 连接超时（毫秒）

@@ -27,10 +27,10 @@ public class FeatureExtractionProperties {
 
     /**
      * Docker特征提取服务URL
-     * 根据Docker特征提取方法参考.md，使用/api/add_pic端点
+     * CLIP算法使用/api/extract端点
      */
     @NotBlank(message = "Docker服务URL不能为空")
-    private String url = "http://192.168.0.79:5000/api/add_pic";
+    private String url = "http://192.168.30.114:8000/api/extract";
 
     /**
      * 请求超时时间（毫秒）
@@ -71,7 +71,7 @@ public class FeatureExtractionProperties {
      * 健康检查URL
      * 用于检测Docker服务是否可用
      */
-    private String healthCheckUrl = "http://192.168.0.79:5000/health";
+    private String healthCheckUrl = "http://192.168.30.114:8000/health";
 
     /**
      * 是否启用健康检查
@@ -85,6 +85,22 @@ public class FeatureExtractionProperties {
      * false: 跳过已存在特征向量的文件（默认行为，保持向后兼容）
      */
     private boolean overwriteExisting = false;
+
+    /**
+     * 是否启用CLIP旋转增强。
+     */
+    private boolean rotationAugment = true;
+
+    /**
+     * CLIP特征维度，clip-vit-large-patch14固定为768维。
+     */
+    @Min(value = 1, message = "特征维度必须大于0")
+    private int featureDim = 768;
+
+    /**
+     * CLIP模型名称，用于入库记录和排查。
+     */
+    private String modelName = "clip-vit-large-patch14";
 
     // Getter和Setter方法
 
@@ -168,6 +184,30 @@ public class FeatureExtractionProperties {
         this.overwriteExisting = overwriteExisting;
     }
 
+    public boolean isRotationAugment() {
+        return rotationAugment;
+    }
+
+    public void setRotationAugment(boolean rotationAugment) {
+        this.rotationAugment = rotationAugment;
+    }
+
+    public int getFeatureDim() {
+        return featureDim;
+    }
+
+    public void setFeatureDim(int featureDim) {
+        this.featureDim = featureDim;
+    }
+
+    public String getModelName() {
+        return modelName;
+    }
+
+    public void setModelName(String modelName) {
+        this.modelName = modelName;
+    }
+
     @Override
     public String toString() {
         return "FeatureExtractionProperties{" +
@@ -181,6 +221,9 @@ public class FeatureExtractionProperties {
                 ", healthCheckUrl='" + healthCheckUrl + '\'' +
                 ", healthCheckEnabled=" + healthCheckEnabled +
                 ", overwriteExisting=" + overwriteExisting +
+                ", rotationAugment=" + rotationAugment +
+                ", featureDim=" + featureDim +
+                ", modelName='" + modelName + '\'' +
                 '}';
     }
 }

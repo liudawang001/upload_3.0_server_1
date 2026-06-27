@@ -3,9 +3,14 @@ package com.mls.upload.client.util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URISyntaxException;
+import java.util.LinkedHashSet;
 import java.util.Properties;
+import java.util.Set;
 
 /**
  * 配置工具类
@@ -18,6 +23,9 @@ public class ConfigUtil {
     
     private static final Logger logger = LoggerFactory.getLogger(ConfigUtil.class);
     private static final String CONFIG_FILE = "application.properties";
+    private static final String CONFIG_DIR = "config";
+    private static final String CONFIG_SYSTEM_PROPERTY = "mls.upload.client.config";
+    private static final String CONFIG_ENV = "MLS_UPLOAD_CLIENT_CONFIG";
     private static Properties properties;
     
     static {
@@ -29,18 +37,86 @@ public class ConfigUtil {
      */
     private static void loadConfig() {
         properties = new Properties();
-        
-        try (InputStream inputStream = ConfigUtil.class.getClassLoader().getResourceAsStream(CONFIG_FILE)) {
+
+        loadDefaultConfig();
+        loadClasspathConfig(CONFIG_FILE);
+        loadExternalConfigs();
+        normalizeServerConfig();
+    }
+
+    private static void loadClasspathConfig(String configFile) {
+        try (InputStream inputStream = ConfigUtil.class.getClassLoader().getResourceAsStream(configFile)) {
             if (inputStream != null) {
                 properties.load(inputStream);
-                logger.info("配置文件加载成功: {}", CONFIG_FILE);
+                logger.info("内置配置文件加载成功: {}", configFile);
             } else {
-                logger.warn("配置文件未找到: {}，使用默认配置", CONFIG_FILE);
-                loadDefaultConfig();
+                logger.warn("内置配置文件未找到: {}", configFile);
             }
         } catch (IOException e) {
-            logger.error("配置文件加载失败: {}", e.getMessage(), e);
-            loadDefaultConfig();
+            logger.error("内置配置文件加载失败: {}", e.getMessage(), e);
+        }
+    }
+
+    private static void loadExternalConfigs() {
+        Set<File> candidates = new LinkedHashSet<>();
+
+        addConfigCandidate(candidates, new File(System.getProperty("user.dir"), CONFIG_FILE));
+        addConfigCandidate(candidates, new File(new File(System.getProperty("user.dir"), CONFIG_DIR), CONFIG_FILE));
+
+        File applicationDir = getApplicationDir();
+        if (applicationDir != null) {
+            addConfigCandidate(candidates, new File(applicationDir, CONFIG_FILE));
+            addConfigCandidate(candidates, new File(new File(applicationDir, CONFIG_DIR), CONFIG_FILE));
+        }
+
+        String envConfigPath = System.getenv(CONFIG_ENV);
+        if (envConfigPath != null && !envConfigPath.trim().isEmpty()) {
+            addConfigCandidate(candidates, new File(envConfigPath.trim()));
+        }
+
+        String systemConfigPath = System.getProperty(CONFIG_SYSTEM_PROPERTY);
+        if (systemConfigPath != null && !systemConfigPath.trim().isEmpty()) {
+            addConfigCandidate(candidates, new File(systemConfigPath.trim()));
+        }
+
+        for (File candidate : candidates) {
+            if (!candidate.exists() || !candidate.isFile()) {
+                continue;
+            }
+
+            try (InputStream inputStream = new FileInputStream(candidate)) {
+                properties.load(inputStream);
+                logger.info("外置配置文件加载成功: {}", candidate.getAbsolutePath());
+            } catch (IOException e) {
+                logger.warn("外置配置文件加载失败: {}, error={}",
+                           candidate.getAbsolutePath(), e.getMessage());
+            }
+        }
+    }
+
+    private static void addConfigCandidate(Set<File> candidates, File file) {
+        if (file == null) {
+            return;
+        }
+
+        try {
+            candidates.add(file.getCanonicalFile());
+        } catch (IOException e) {
+            candidates.add(file.getAbsoluteFile());
+        }
+    }
+
+    private static File getApplicationDir() {
+        try {
+            File codeSource = new File(ConfigUtil.class.getProtectionDomain()
+                    .getCodeSource().getLocation().toURI());
+            if (codeSource.isFile()) {
+                return codeSource.getParentFile();
+            }
+            return codeSource;
+        } catch (URISyntaxException | SecurityException e) {
+            logger.debug("无法解析程序所在目录: {}", e.getMessage());
+            return null;
         }
     }
     
@@ -48,12 +124,13 @@ public class ConfigUtil {
      * 加载默认配置
      */
     private static void loadDefaultConfig() {
-        properties.setProperty("server.url", "http://192.168.0.79:8081");
+        properties.setProperty("server.url", "http://192.168.30.114:8081");
         properties.setProperty("server.timeout", "30000");
         properties.setProperty("upload.chunk.size", "1048576");
         properties.setProperty("upload.thread.pool.size", "5");
+        properties.setProperty("upload.feature.extraction.enabled", "true");
         properties.setProperty("log.level", "INFO");
-        logger.info("默认配置加载完成");
+        logger.debug("默认配置加载完成");
     }
     
     /**
@@ -62,7 +139,26 @@ public class ConfigUtil {
      * @return 服务器URL
      */
     public static String getServerUrl() {
-        return properties.getProperty("server.url", "http://192.168.0.79:8081");
+        String serverUrl = properties.getProperty("server.url");
+        if (serverUrl == null || serverUrl.trim().isEmpty()) {
+            serverUrl = properties.getProperty("server.base.url");
+        }
+
+        if (serverUrl == null || serverUrl.trim().isEmpty()) {
+            String protocol = properties.getProperty("server.protocol", "http");
+            String host = properties.getProperty("server.host", "192.168.30.114");
+            String port = properties.getProperty("server.port", "8081");
+            serverUrl = protocol + "://" + host + ":" + port;
+        }
+
+        return normalizeServerUrl(resolvePlaceholders(serverUrl));
+    }
+
+    /**
+     * 是否在上传花型图后触发服务端特征提取。
+     */
+    public static boolean isUploadFeatureExtractionEnabled() {
+        return getBooleanProperty("upload.feature.extraction.enabled", true);
     }
     
     /**
@@ -126,7 +222,8 @@ public class ConfigUtil {
      * @return 配置值
      */
     public static String getProperty(String key) {
-        return properties.getProperty(key);
+        String value = properties.getProperty(key);
+        return value == null ? null : resolvePlaceholders(value);
     }
     
     /**
@@ -137,7 +234,8 @@ public class ConfigUtil {
      * @return 配置值
      */
     public static String getProperty(String key, String defaultValue) {
-        return properties.getProperty(key, defaultValue);
+        String value = properties.getProperty(key, defaultValue);
+        return value == null ? null : resolvePlaceholders(value);
     }
     
     /**
@@ -186,7 +284,7 @@ public class ConfigUtil {
      * @return 布尔值
      */
     public static boolean getBooleanProperty(String key, boolean defaultValue) {
-        String value = properties.getProperty(key);
+        String value = getProperty(key);
         if (value == null) {
             return defaultValue;
         }
@@ -201,7 +299,7 @@ public class ConfigUtil {
      * @return 整数值
      */
     public static int getIntProperty(String key, int defaultValue) {
-        String value = properties.getProperty(key);
+        String value = getProperty(key);
         if (value == null) {
             return defaultValue;
         }
@@ -221,7 +319,7 @@ public class ConfigUtil {
      * @return 长整数值
      */
     public static long getLongProperty(String key, long defaultValue) {
-        String value = properties.getProperty(key);
+        String value = getProperty(key);
         if (value == null) {
             return defaultValue;
         }
@@ -231,5 +329,58 @@ public class ConfigUtil {
             logger.warn("配置值转换为长整数失败: {}={}，使用默认值{}", key, value, defaultValue);
             return defaultValue;
         }
+    }
+
+    private static void normalizeServerConfig() {
+        String serverUrl = getServerUrl();
+        properties.setProperty("server.url", serverUrl);
+        logger.info("客户端服务端地址: {}", serverUrl);
+    }
+
+    private static String normalizeServerUrl(String url) {
+        if (url == null) {
+            return "http://192.168.30.114:8081";
+        }
+
+        String normalized = url.trim();
+        while (normalized.endsWith("/")) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+
+        if (normalized.endsWith("/api")) {
+            normalized = normalized.substring(0, normalized.length() - 4);
+            logger.warn("server.url不应包含/api，已自动修正为: {}", normalized);
+        }
+
+        return normalized;
+    }
+
+    private static String resolvePlaceholders(String value) {
+        if (value == null || value.indexOf("${") < 0) {
+            return value;
+        }
+
+        String resolved = value;
+        for (int i = 0; i < 5 && resolved.indexOf("${") >= 0; i++) {
+            int start = resolved.indexOf("${");
+            int end = resolved.indexOf("}", start);
+            if (end <= start) {
+                break;
+            }
+
+            String key = resolved.substring(start + 2, end);
+            String replacement = properties.getProperty(key);
+            if (replacement == null) {
+                replacement = System.getenv(key);
+            }
+            if (replacement == null) {
+                logger.warn("配置占位符未解析: {}", key);
+                break;
+            }
+
+            resolved = resolved.substring(0, start) + replacement + resolved.substring(end + 1);
+        }
+
+        return resolved;
     }
 }
